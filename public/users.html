@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contacts - InstantID</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f4f7f6; min-height: 100vh; }
+        .navbar {
+            background: #2c3e50; color: white; padding: 15px 25px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .navbar h2 { font-size: 20px; }
+        .navbar a {
+            color: white; text-decoration: none; font-size: 14px;
+            margin-left: 15px; padding: 8px 15px; border-radius: 5px;
+        }
+        .navbar a.active { background: #2980b9; }
+        .navbar a:hover { background: #34495e; }
+        .container { max-width: 700px; margin: 30px auto; padding: 0 20px; }
+        .page-title { color: #2c3e50; margin-bottom: 20px; font-size: 24px; }
+        .user-card {
+            background: white; padding: 20px; border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin-bottom: 12px;
+            display: flex; justify-content: space-between; align-items: center;
+            cursor: pointer; transition: transform 0.15s;
+        }
+        .user-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.12); }
+        .user-card .avatar {
+            width: 45px; height: 45px; border-radius: 50%;
+            background: #2980b9; color: white;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 18px; margin-right: 15px;
+        }
+        .user-card .info { flex: 1; }
+        .user-card .username { font-weight: bold; color: #2c3e50; font-size: 15px; }
+        .user-card .email { color: #7f8c8d; font-size: 13px; margin-top: 2px; }
+        .user-card .arrow { color: #bdc3c7; font-size: 20px; }
+        .no-users {
+            background: white; padding: 40px; border-radius: 10px;
+            text-align: center; color: #7f8c8d;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+    <h2>🚀 InstantID</h2>
+    <div>
+        <a href="/dashboard.html">Dashboard</a>
+        <a href="/users.html" class="active">Messages</a>
+        <a href="/contacts.html">Contacts</a>
+        <a href="#" onclick="logout(event)">Log Out</a>
+    </div>
+</div>
+
+    <div class="container">
+        <h1 class="page-title">Select a Contact</h1>
+        <div id="usersList">Loading...</div>
+    </div>
+
+    <script>
+        async function loadUsers() {
+            try {
+                const res = await fetch('/api/users');
+                if (!res.ok) {
+                    window.location.href = '/login.html';
+                    return;
+                }
+                const users = await res.json();
+                const list = document.getElementById('usersList');
+
+                if (users.length === 0) {
+                    list.innerHTML = `
+                        <div class="no-users">
+                            <p>No other users registered yet.</p>
+                            <p style="margin-top:10px;">Share the app with someone and ask them to sign up!</p>
+                        </div>`;
+                    return;
+                }
+
+                list.innerHTML = users.map(u => `
+                    <div class="user-card" onclick="openConversation(${u.id})">
+                        <div style="display:flex; align-items:center;">
+                            <div class="avatar">${u.username[0].toUpperCase()}</div>
+                            <div class="info">
+                                <div class="username">${u.username}</div>
+                                <div class="email">${u.email}</div>
+                            </div>
+                        </div>
+                        <div class="arrow">›</div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                console.error(err);
+                document.getElementById('usersList').innerHTML = '<p>Error loading users.</p>';
+            }
+        }
+
+        function openConversation(userId) {
+            window.location.href = `/conversation.html?with=${userId}`;
+        }
+
+        async function logout(e) {
+            e.preventDefault();
+            await fetch('/api/logout', { method: 'POST' });
+            window.location.href = '/login.html';
+        }
+
+        loadUsers();
+    </script>
+</body>
+</html>

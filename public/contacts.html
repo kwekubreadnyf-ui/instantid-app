@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Contacts - InstantID</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f4f7f6; min-height: 100vh; }
+        .navbar {
+            background: #2c3e50; color: white; padding: 15px 25px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .navbar h2 { font-size: 20px; }
+        .navbar a {
+            color: white; text-decoration: none; font-size: 14px;
+            margin-left: 15px; padding: 8px 15px; border-radius: 5px;
+        }
+        .navbar a.active { background: #2980b9; }
+        .navbar a:hover { background: #34495e; }
+        .container { max-width: 700px; margin: 30px auto; padding: 0 20px; }
+        .page-title { color: #2c3e50; margin-bottom: 20px; font-size: 24px; }
+        .add-form {
+            background: white; padding: 20px; border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin-bottom: 25px;
+        }
+        .add-form h3 { color: #2c3e50; font-size: 16px; margin-bottom: 15px; }
+        .add-form .row { display: flex; gap: 10px; flex-wrap: wrap; }
+        .add-form input {
+            padding: 12px; border: 1px solid #bdc3c7;
+            border-radius: 6px; font-size: 14px; flex: 1; min-width: 150px;
+        }
+        .add-form input:focus { outline: none; border-color: #2980b9; }
+        .add-form button {
+            padding: 12px 25px; background: #27ae60; color: white;
+            border: none; border-radius: 6px; font-weight: bold;
+            cursor: pointer; font-size: 14px;
+        }
+        .add-form button:hover { background: #219150; }
+        .contact-card {
+            background: white; padding: 18px 20px; border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin-bottom: 12px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .contact-card .info .name { font-weight: bold; color: #2c3e50; font-size: 15px; }
+        .contact-card .info .phone { color: #7f8c8d; font-size: 13px; margin-top: 3px; }
+        .contact-card .actions { display: flex; gap: 8px; }
+        .btn-wa {
+            background: #25D366; color: white; border: none;
+            padding: 8px 14px; border-radius: 6px; font-size: 13px;
+            font-weight: bold; cursor: pointer; text-decoration: none;
+            display: inline-flex; align-items: center; gap: 5px;
+        }
+        .btn-wa:hover { background: #1da851; }
+        .btn-delete {
+            background: #e74c3c; color: white; border: none;
+            padding: 8px 12px; border-radius: 6px; font-size: 13px;
+            font-weight: bold; cursor: pointer;
+        }
+        .btn-delete:hover { background: #c0392b; }
+        .no-contacts {
+    background: white;
+    padding: 60px 30px;
+    border-radius: 10px;
+    text-align: center;
+    color: #7f8c8d;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+}
+.no-contacts .emoji {
+    font-size: 48px;
+    margin-bottom: 15px;
+}
+.no-contacts h3 {
+    color: #2c3e50;
+    font-size: 17px;
+    margin-bottom: 8px;
+}
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <h2>🚀 InstantID</h2>
+        <div>
+            <a href="/dashboard.html">Dashboard</a>
+            <a href="/users.html">Messages</a>
+            <a href="/contacts.html" class="active">Contacts</a>
+            <a href="#" onclick="logout(event)">Log Out</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1 class="page-title">My Contacts</h1>
+
+        <div class="add-form">
+            <h3>➕ Add a New Contact</h3>
+            <div class="row">
+                <input type="text" id="nameInput" placeholder="Name (e.g., Joshua)" autocomplete="off">
+                <input type="text" id="phoneInput" placeholder="Phone (e.g., 233541234567)" autocomplete="off">
+                <button onclick="addContact()">Add Contact</button>
+            </div>
+            <p style="font-size: 12px; color: #7f8c8d; margin-top: 10px;">
+                💡 Include the country code (e.g., 233 for Ghana) and no spaces or dashes.
+            </p>
+        </div>
+
+        <div id="contactsList">Loading...</div>
+    </div>
+
+    <script>
+        async function loadContacts() {
+            try {
+                const res = await fetch('/api/contacts');
+                if (!res.ok) { window.location.href = '/login.html'; return; }
+                const contacts = await res.json();
+                const list = document.getElementById('contactsList');
+
+                if (contacts.length === 0) {
+    list.innerHTML = `
+        <div class="no-contacts">
+            <div class="emoji">📇</div>
+            <h3>No contacts yet</h3>
+            <p>Add a friend's WhatsApp number above to start messaging them outside the app.</p>
+        </div>`;
+    return;
+}
+
+                list.innerHTML = contacts.map(c => `
+                    <div class="contact-card">
+                        <div class="info">
+                            <div class="name">${c.name}</div>
+                            <div class="phone">+${c.phone}</div>
+                        </div>
+                        <div class="actions">
+                            <button class="btn-delete" onclick="deleteContact(${c.id})">Delete</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function addContact() {
+            const name = document.getElementById('nameInput').value.trim();
+            const phone = document.getElementById('phoneInput').value.trim();
+
+            if (!name || !phone) {
+                alert('Please enter both name and phone number.');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/contacts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, phone })
+                });
+                if (res.ok) {
+                    document.getElementById('nameInput').value = '';
+                    document.getElementById('phoneInput').value = '';
+                    loadContacts();
+                } else {
+                    const err = await res.json();
+                    alert('Failed: ' + (err.error || 'Unknown error'));
+                }
+            } catch (err) {
+                alert('Network error.');
+            }
+        }
+
+        async function deleteContact(id) {
+            if (!confirm('Delete this contact?')) return;
+            try {
+                await fetch(`/api/contacts/${id}`, { method: 'DELETE' });
+                loadContacts();
+            } catch (err) {
+                alert('Network error.');
+            }
+        }
+
+        async function logout(e) {
+            e.preventDefault();
+            await fetch('/api/logout', { method: 'POST' });
+            window.location.href = '/login.html';
+        }
+
+        loadContacts();
+    </script>
+</body>
+</html>

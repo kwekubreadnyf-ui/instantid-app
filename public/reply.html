@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reply to Message - InstantID</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #2c3e50, #2980b9);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 450px;
+        }
+        h1 {
+            color: #2c3e50;
+            font-size: 22px;
+            margin-bottom: 5px;
+            text-align: center;
+        }
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            font-size: 13px;
+            margin-bottom: 25px;
+        }
+        .original-message {
+            background: #ecf0f1;
+            border-left: 4px solid #2980b9;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        .original-message .from {
+            font-weight: bold;
+            color: #2c3e50;
+            font-size: 13px;
+            margin-bottom: 5px;
+        }
+        .original-message .content {
+            color: #2c3e50;
+            font-size: 15px;
+            line-height: 1.5;
+        }
+        .original-message .time {
+            font-size: 11px;
+            color: #7f8c8d;
+            margin-top: 8px;
+        }
+        .form-group { margin-bottom: 15px; }
+        label {
+            display: block;
+            font-weight: bold;
+            color: #2c3e50;
+            font-size: 13px;
+            margin-bottom: 6px;
+        }
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #bdc3c7;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: Arial, sans-serif;
+            resize: vertical;
+            min-height: 100px;
+        }
+        textarea:focus { outline: none; border-color: #2980b9; }
+        button {
+            width: 100%;
+            padding: 14px;
+            background: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover { background: #219150; }
+        button:disabled { background: #95a5a6; cursor: not-allowed; }
+        .error {
+            background: #fadbd8;
+            color: #922b21;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            margin-bottom: 15px;
+            display: none;
+        }
+        .success {
+            text-align: center;
+            padding: 20px;
+        }
+        .success h2 { color: #27ae60; font-size: 22px; margin-bottom: 10px; }
+        .success p { color: #555; font-size: 14px; line-height: 1.6; }
+        .success .emoji { font-size: 48px; margin-bottom: 10px; }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+        }
+        .location-note {
+            background: #eaf2f8;
+            padding: 10px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #2c3e50;
+            margin-top: 15px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="card" id="card">
+        <div class="loading" id="loading">Loading message...</div>
+
+        <div id="content" style="display:none;">
+            <h1>Reply to Message</h1>
+            <p class="subtitle">via InstantID</p>
+
+            <div class="original-message">
+                <div class="from" id="fromName">From: ...</div>
+                <div class="content" id="originalContent">...</div>
+                <div class="time" id="originalTime"></div>
+            </div>
+
+            <div class="error" id="errorBox"></div>
+
+            <form id="replyForm">
+                <div class="form-group">
+                    <label for="replyContent">Your Reply</label>
+                    <textarea id="replyContent" placeholder="Type your reply here..." required></textarea>
+                </div>
+                <button type="submit" id="submitBtn">Send Reply</button>
+                <div class="location-note">
+                    📍 Your approximate location will be attached to your reply for security purposes.
+                </div>
+            </form>
+        </div>
+
+        <div class="success" id="successBox" style="display:none;">
+            <div class="emoji">✅</div>
+            <h2>Reply Sent!</h2>
+            <p>Your reply has been delivered.<br>You can close this window now.</p>
+        </div>
+    </div>
+
+    <script>
+        // Grab the token from the URL: /reply.html?token=abc123
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get('token');
+
+        const loadingEl = document.getElementById('loading');
+        const contentEl = document.getElementById('content');
+        const successEl = document.getElementById('successBox');
+        const errorBox = document.getElementById('errorBox');
+        const form = document.getElementById('replyForm');
+        const submitBtn = document.getElementById('submitBtn');
+
+        if (!token) {
+            loadingEl.innerHTML = '<p style="color:#e74c3c;">❌ Invalid link. No token provided.</p>';
+        } else {
+            loadOriginalMessage();
+        }
+
+        async function loadOriginalMessage() {
+            try {
+                const res = await fetch(`/api/messages/token/${token}`);
+                if (!res.ok) {
+                    const err = await res.json();
+                    loadingEl.innerHTML = `<p style="color:#e74c3c;">❌ ${err.error || 'Message not found.'}</p>`;
+                    return;
+                }
+                const msg = await res.json();
+                document.getElementById('fromName').textContent = `From: ${msg.sender_username}`;
+                document.getElementById('originalContent').textContent = msg.content;
+                document.getElementById('originalTime').textContent = new Date(msg.created_at + 'Z').toLocaleString();
+
+                loadingEl.style.display = 'none';
+                contentEl.style.display = 'block';
+            } catch (err) {
+                loadingEl.innerHTML = '<p style="color:#e74c3c;">❌ Network error.</p>';
+            }
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            errorBox.style.display = 'none';
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Sending...';
+
+            const content = document.getElementById('replyContent').value.trim();
+            if (!content) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Send Reply';
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/messages/token/${token}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content })
+                });
+
+                const result = await res.json();
+
+                if (res.ok) {
+                    contentEl.style.display = 'none';
+                    successEl.style.display = 'block';
+                } else {
+                    errorBox.textContent = result.error || 'Failed to send reply.';
+                    errorBox.style.display = 'block';
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Send Reply';
+                }
+            } catch (err) {
+                errorBox.textContent = 'Network error. Please try again.';
+                errorBox.style.display = 'block';
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Send Reply';
+            }
+        });
+    </script>
+</body>
+</html>

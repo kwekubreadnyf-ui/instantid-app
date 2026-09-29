@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - InstantID</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f4f7f6; min-height: 100vh; }
+        .navbar {
+            background: #2c3e50; color: white; padding: 15px 25px;
+            display: flex; justify-content: space-between; align-items: center;
+            flex-wrap: wrap; gap: 10px;
+        }
+        .navbar h2 { font-size: 20px; }
+        .navbar .links { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+        .navbar a {
+            color: white; text-decoration: none; font-size: 14px;
+            padding: 8px 14px; border-radius: 5px;
+        }
+        .navbar a.active { background: #2980b9; }
+        .navbar a:hover { background: #34495e; }
+        .logout-btn {
+            background: #e74c3c; color: white; border: none;
+            padding: 8px 15px; border-radius: 5px; cursor: pointer;
+            font-weight: bold; font-size: 13px;
+        }
+        .logout-btn:hover { background: #c0392b; }
+
+        .container { max-width: 1000px; margin: 30px auto; padding: 0 20px; }
+
+        .welcome-card {
+            background: linear-gradient(135deg, #2980b9, #2c3e50);
+            border-radius: 12px;
+            padding: 30px;
+            color: white;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 30px rgba(41, 128, 185, 0.2);
+        }
+        .welcome-card h1 { font-size: 28px; margin-bottom: 8px; }
+        .welcome-card p { font-size: 14px; opacity: 0.9; }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+            transition: transform 0.2s;
+        }
+        .stat-card:hover { transform: translateY(-3px); }
+        .stat-card .icon { font-size: 28px; margin-bottom: 8px; }
+        .stat-card .value {
+            font-size: 32px; font-weight: bold; color: #2c3e50; line-height: 1;
+        }
+        .stat-card .label {
+            color: #7f8c8d; font-size: 13px; margin-top: 6px;
+        }
+
+        .quick-actions {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+            margin-bottom: 20px;
+        }
+        .quick-actions h3 {
+            color: #2c3e50; font-size: 16px; margin-bottom: 15px;
+        }
+        .action-buttons {
+            display: flex; gap: 10px; flex-wrap: wrap;
+        }
+        .action-btn {
+            text-decoration: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            color: white;
+            transition: transform 0.15s;
+            display: inline-flex; align-items: center; gap: 6px;
+        }
+        .action-btn:hover { transform: translateY(-2px); }
+        .btn-blue { background: #2980b9; }
+        .btn-green { background: #25D366; }
+        .btn-purple { background: #8e44ad; }
+
+        .info-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+            color: #555; font-size: 14px; line-height: 1.6;
+        }
+        .info-card h3 { color: #2c3e50; font-size: 15px; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <h2>🚀 InstantID</h2>
+        <div class="links">
+            <a href="/dashboard.html" class="active">Dashboard</a>
+            <a href="/users.html">Messages</a>
+            <a href="/contacts.html">Contacts</a>
+            <span id="usernameDisplay" style="color: #bdc3c7; font-size: 14px;">...</span>
+            <button class="logout-btn" onclick="logout()">Log Out</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="welcome-card">
+            <h1 id="welcomeMsg">Welcome back!</h1>
+            <p id="emailDisplay">Loading...</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="icon">📤</div>
+                <div class="value" id="statSent">—</div>
+                <div class="label">Messages Sent</div>
+            </div>
+            <div class="stat-card">
+                <div class="icon">📥</div>
+                <div class="value" id="statReceived">—</div>
+                <div class="label">Messages Received</div>
+            </div>
+            <div class="stat-card">
+                <div class="icon">📱</div>
+                <div class="value" id="statWhatsapp">—</div>
+                <div class="label">Sent via WhatsApp</div>
+            </div>
+            <div class="stat-card">
+                <div class="icon">👥</div>
+                <div class="value" id="statContacts">—</div>
+                <div class="label">Saved Contacts</div>
+            </div>
+            <div class="stat-card">
+                <div class="icon">🌍</div>
+                <div class="value" id="statUsers">—</div>
+                <div class="label">Other Registered Users</div>
+            </div>
+        </div>
+
+        <div class="quick-actions">
+            <h3>⚡ Quick Actions</h3>
+            <div class="action-buttons">
+                <a href="/users.html" class="action-btn btn-blue">💬 View Messages</a>
+                <a href="/contacts.html" class="action-btn btn-green">📱 Manage Contacts</a>
+            </div>
+        </div>
+
+        <div class="info-card">
+            <h3>ℹ️ About InstantID</h3>
+            <p>InstantID is a location-aware messaging platform. Every message you send or receive is automatically enriched with the sender's approximate geographic location, derived from their IP address. This provides added context and security to your conversations.</p>
+        </div>
+    </div>
+
+    <script>
+        async function loadUser() {
+            try {
+                const res = await fetch('/api/me');
+                if (!res.ok) { window.location.href = '/login.html'; return; }
+                const user = await res.json();
+                document.getElementById('welcomeMsg').textContent = `Welcome, ${user.username}!`;
+                document.getElementById('emailDisplay').textContent = user.email;
+                document.getElementById('usernameDisplay').textContent = user.username;
+            } catch (err) {
+                window.location.href = '/login.html';
+            }
+        }
+
+        async function loadStats() {
+            try {
+                const res = await fetch('/api/messages/stats/summary');
+                if (!res.ok) return;
+                const stats = await res.json();
+                document.getElementById('statSent').textContent = stats.messagesSent;
+                document.getElementById('statReceived').textContent = stats.messagesReceived;
+                document.getElementById('statWhatsapp').textContent = stats.whatsappSent;
+                document.getElementById('statContacts').textContent = stats.contacts;
+                document.getElementById('statUsers').textContent = stats.otherUsers;
+            } catch (err) {
+                console.error('Stats error:', err);
+            }
+        }
+
+        async function logout() {
+            await fetch('/api/logout', { method: 'POST' });
+            window.location.href = '/login.html';
+        }
+
+        loadUser();
+        loadStats();
+    </script>
+</body>
+</html>
