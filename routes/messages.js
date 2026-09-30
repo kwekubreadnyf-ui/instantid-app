@@ -66,7 +66,7 @@ router.post('/external', requireLogin, async (req, res) => {
     const token = crypto.randomBytes(16).toString('hex');
 
     // Capture sender's location
-    const senderIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+   const senderIp = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
     const location = await geolocate(senderIp);
 
     const sql = `
