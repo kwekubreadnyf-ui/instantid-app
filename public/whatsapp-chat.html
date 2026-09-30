@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat - InstantID</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif; background: #f4f7f6;
+            height: 100vh; display: flex; flex-direction: column;
+        }
+        .navbar {
+            background: #2c3e50; color: white; padding: 12px 20px;
+            display: flex; justify-content: space-between; align-items: center;
+            flex-shrink: 0;
+        }
+        .navbar .left { display: flex; align-items: center; gap: 15px; }
+        .navbar .back {
+            color: white; text-decoration: none; font-size: 22px;
+            cursor: pointer; line-height: 1;
+        }
+        .navbar h2 { font-size: 17px; }
+        .navbar .phone { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+        .chat-container {
+            flex: 1; overflow-y: auto; padding: 20px;
+            display: flex; flex-direction: column; gap: 12px;
+            max-width: 800px; width: 100%; margin: 0 auto;
+        }
+        .message {
+            max-width: 75%; padding: 12px 16px; border-radius: 14px;
+            font-size: 14px; line-height: 1.5; word-wrap: break-word;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .message .time { font-size: 10px; color: #7f8c8d; margin-top: 5px; }
+        .message .location {
+            font-size: 11px; color: #2980b9;
+            margin-top: 5px; padding-top: 5px;
+            border-top: 1px dashed rgba(0,0,0,0.1);
+            font-weight: bold; line-height: 1.4;
+        }
+        .message.sent {
+            background: #25D366; color: white;
+            align-self: flex-end; border-bottom-right-radius: 4px;
+        }
+        .message.sent .time { color: rgba(255,255,255,0.75); }
+        .message.sent .location {
+            color: #ecf0f1;
+            border-top: 1px dashed rgba(255,255,255,0.3);
+        }
+        .message.received {
+            background: white; color: #2c3e50;
+            align-self: flex-start; border-bottom-left-radius: 4px;
+        }
+        .message .sender {
+            font-size: 11px; font-weight: bold; margin-bottom: 4px;
+            color: #2980b9;
+        }
+        .message.sent .sender { color: rgba(255,255,255,0.9); }
+        .input-bar {
+            background: white; padding: 15px 20px;
+            border-top: 1px solid #ecf0f1; flex-shrink: 0;
+        }
+        .input-bar form {
+            max-width: 800px; margin: 0 auto;
+            display: flex; gap: 10px;
+        }
+        .input-bar input {
+            flex: 1; padding: 12px 15px;
+            border: 1px solid #bdc3c7; border-radius: 25px;
+            font-size: 14px;
+        }
+        .input-bar input:focus { outline: none; border-color: #25D366; }
+        .input-bar button {
+            background: #25D366; color: white; border: none;
+            border-radius: 25px; padding: 0 25px;
+            font-weight: bold; cursor: pointer; font-size: 14px;
+        }
+        .input-bar button:hover { background: #1da851; }
+        .empty {
+            text-align: center; color: #7f8c8d;
+            padding: 60px 20px; font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="left">
+            <a href="/contacts.html" class="back">←</a>
+            <div>
+                <h2 id="contactName">Loading...</h2>
+                <div class="phone" id="contactPhone"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="chat-container" id="chatContainer">
+        <div class="empty">Loading messages...</div>
+    </div>
+
+    <div class="input-bar">
+        <form id="messageForm">
+            <input type="text" id="messageInput" placeholder="Type a message to send via WhatsApp..." required autocomplete="off">
+            <button type="submit">Send</button>
+        </form>
+    </div>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const phone = params.get('phone');
+        const name = params.get('name') || 'Contact';
+
+        if (!phone) {
+            window.location.href = '/contacts.html';
+        }
+
+        document.getElementById('contactName').textContent = 'Chat with ' + name;
+        document.getElementById('contactPhone').textContent = '+' + phone;
+
+        async function loadMessages() {
+            try {
+                const res = await fetch(`/api/messages/contact/${phone}`);
+                if (!res.ok) { window.location.href = '/login.html'; return; }
+                const messages = await res.json();
+                renderMessages(messages);
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function renderMessages(messages) {
+            const container = document.getElementById('chatContainer');
+            if (messages.length === 0) {
+                container.innerHTML = `
+                    <div class="empty">
+                        <div style="font-size:48px; margin-bottom:15px;">💬</div>
+                        <h3 style="color:#2c3e50; margin-bottom:8px;">No messages yet</h3>
+                        <p>Type a message below to start chatting with ${name} via WhatsApp.</p>
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = messages.map(m => {
+                // If the message is a reply (has reply_to_message_id), it's "received"
+                // Otherwise, it's "sent" by the user
+                const isReceived = m.reply_to_message_id != null && m.is_external === 0;
+                const time = new Date(m.created_at + 'Z').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                let locationLine = '';
+                if (m.sender_city || m.sender_country || m.sender_ip) {
+                    const parts = [];
+                    if (m.sender_city && m.sender_country) parts.push(`${m.sender_city}, ${m.sender_country}`);
+                    else if (m.sender_city) parts.push(m.sender_city);
+                    else if (m.sender_country) parts.push(m.sender_country);
+                    if (m.sender_lat != null && m.sender_lon != null) parts.push(`${Number(m.sender_lat).toFixed(4)}, ${Number(m.sender_lon).toFixed(4)}`);
+                    if (m.sender_ip) parts.push(`IP: ${m.sender_ip}`);
+                    locationLine = `<div class="location">📍 ${parts.join(' | ')}</div>`;
+                }
+
+                return `
+                    <div class="message ${isReceived ? 'received' : 'sent'}">
+                        <div class="sender">${isReceived ? (m.contact_name || name) : 'You'}</div>
+                        <div>${escapeHtml(m.content)}</div>
+                        ${locationLine}
+                        <div class="time">${time}</div>
+                    </div>
+                `;
+            }).join('');
+
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        document.getElementById('messageForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const input = document.getElementById('messageInput');
+            const sendBtn = e.target.querySelector('button[type="submit"]');
+            const content = input.value.trim();
+            if (!content) return;
+
+            input.value = '';
+            sendBtn.disabled = true;
+            sendBtn.textContent = 'Sending...';
+
+            try {
+                const res = await fetch('/api/messages/external', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contactName: name,
+                        contactPhone: phone,
+                        content: content
+                    })
+                });
+
+                const data = await res.json();
+                if (!res.ok) {
+                    alert('Failed to send: ' + (data.error || 'Unknown error'));
+                    input.value = content;
+                    return;
+                }
+
+                // Open WhatsApp with the pre-filled message
+                const replyLink = `${window.location.origin}/reply.html?token=${data.token}`;
+                const waText = `Prince sent you a message on InstantID:\n\n"${content}"\n\nReply here: ${replyLink}`;
+                window.open(`https://wa.me/${phone}?text=${encodeURIComponent(waText)}`, '_blank');
+
+                // Refresh the conversation
+                await loadMessages();
+            } catch (err) {
+                alert('Network error: ' + err.message);
+                input.value = content;
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.textContent = 'Send';
+            }
+        });
+
+        loadMessages();
+
+        // Auto-refresh every 5 seconds to pick up replies
+        setInterval(loadMessages, 5000);
+    </script>
+</body>
+</html>

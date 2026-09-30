@@ -252,4 +252,37 @@ router.get('/external/list', requireLogin, (req, res) => {
     });
 });
 
+// ============================================
+// GET ALL MESSAGES FOR A CONTACT (by phone number)
+// ============================================
+router.get('/contact/:phone', requireLogin, (req, res) => {
+    const myId = req.session.userId;
+    const phone = req.params.phone;
+
+    // Get all messages to this phone + replies linked to those messages
+    const sql = `
+        SELECT 
+            m.id, m.content, m.is_external, m.contact_name, m.created_at,
+            m.sender_city, m.sender_country, m.sender_lat, m.sender_lon, m.sender_ip,
+            m.reply_to_message_id,
+            orig.contact_name AS original_contact
+        FROM messages m
+        LEFT JOIN messages orig ON orig.id = m.reply_to_message_id
+        WHERE 
+            (m.sender_id = ? AND m.is_external = 1 AND m.contact_phone = ?)
+            OR (m.reply_to_message_id IN (
+                SELECT id FROM messages WHERE sender_id = ? AND is_external = 1 AND contact_phone = ?
+            ))
+        ORDER BY m.created_at ASC
+    `;
+
+    db.all(sql, [myId, phone, myId, phone], (err, rows) => {
+        if (err) {
+            console.error('Contact conversation error:', err.message);
+            return res.status(500).json({ error: 'Database error.' });
+        }
+        res.json(rows);
+    });
+});
+
 module.exports = router;
