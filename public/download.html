@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Install InstantID</title>
+    <link rel="manifest" href="/manifest.json">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #2c3e50, #2980b9);
+            min-height: 100vh;
+            padding: 30px 20px;
+            color: white;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            text-align: center;
+            font-size: 15px;
+            opacity: 0.9;
+            margin-bottom: 40px;
+        }
+        .install-btn {
+            display: block;
+            width: 100%;
+            max-width: 350px;
+            margin: 0 auto 40px auto;
+            padding: 18px;
+            background: white;
+            color: #2c3e50;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 0.2s;
+        }
+        .install-btn:hover { transform: translateY(-3px); }
+        .install-btn:disabled {
+            background: rgba(255,255,255,0.5);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .platform {
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+        .platform h2 {
+            font-size: 20px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .platform ol {
+            padding-left: 25px;
+            line-height: 1.9;
+            font-size: 15px;
+        }
+        .platform ol li {
+            margin-bottom: 8px;
+        }
+        .platform .note {
+            margin-top: 15px;
+            padding: 12px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 8px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 30px;
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+        .back-link:hover { opacity: 1; text-decoration: underline; }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📱 Install InstantID</h1>
+        <p class="subtitle">Get the full app experience on your phone</p>
+
+        <button id="installBtn" class="install-btn" style="display: none;">
+            ⚡ Install Now
+        </button>
+
+        <div class="platform" id="iosInstructions" style="display: none;">
+            <h2>🍎 iPhone (Safari)</h2>
+            <ol>
+                <li>Open this page in <strong>Safari</strong> (not Chrome)</li>
+                <li>Tap the <strong>Share</strong> button (square with arrow up)</li>
+                <li>Scroll down and tap <strong>"Add to Home Screen"</strong></li>
+                <li>Tap <strong>"Add"</strong> in the top-right corner</li>
+                <li>Find the <strong>InstantID</strong> icon on your home screen</li>
+            </ol>
+            <div class="note">
+                💡 <strong>Tip:</strong> After adding, open the app from your home screen — it will run full-screen without the Safari bar.
+            </div>
+        </div>
+
+        <div class="platform" id="androidInstructions" style="display: none;">
+            <h2>🤖 Android (Chrome)</h2>
+            <ol>
+                <li>Open this page in <strong>Chrome</strong></li>
+                <li>Tap the <strong>three dots</strong> in the top-right corner</li>
+                <li>Tap <strong>"Install app"</strong> or <strong>"Add to Home Screen"</strong></li>
+                <li>Tap <strong>"Install"</strong></li>
+                <li>Find the <strong>InstantID</strong> icon on your home screen</li>
+            </ol>
+            <div class="note">
+                💡 <strong>Tip:</strong> Chrome usually shows an "Install app" banner automatically when you visit — tap it to install in one tap.
+            </div>
+        </div>
+
+        <div class="platform" id="desktopInstructions">
+            <h2>💻 Desktop (Chrome / Edge)</h2>
+            <ol>
+                <li>Open this page in Chrome or Edge</li>
+                <li>Look at the <strong>address bar</strong> — you'll see an <strong>install icon</strong> (monitor with a down arrow)</li>
+                <li>Click it and select <strong>"Install"</strong></li>
+                <li>InstantID will open in its own window, without the browser bar</li>
+            </ol>
+            <div class="note">
+                💡 <strong>Tip:</strong> Or click the <strong>three dots</strong> → <strong>"Install page as app"</strong>
+            </div>
+        </div>
+
+        <a href="/" class="back-link">← Back to InstantID</a>
+    </div>
+
+    <script>
+        // Detect the platform and show relevant instructions
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        const isAndroid = /Android/.test(navigator.userAgent);
+
+        if (isIOS) {
+            document.getElementById('iosInstructions').style.display = 'block';
+            document.getElementById('androidInstructions').style.display = 'none';
+            document.getElementById('desktopInstructions').style.display = 'none';
+        } else if (isAndroid) {
+            document.getElementById('androidInstructions').style.display = 'block';
+            document.getElementById('iosInstructions').style.display = 'none';
+            document.getElementById('desktopInstructions').style.display = 'none';
+        }
+        // On desktop, the desktop instructions show by default
+
+        // Handle the "Install Now" button
+        let deferredPrompt = null;
+        const installBtn = document.getElementById('installBtn');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installBtn.style.display = 'block';
+        });
+
+        installBtn.addEventListener('click', async () => {
+            if (!deferredPrompt) {
+                alert('Install prompt not available. Please follow the instructions below.');
+                return;
+            }
+            deferredPrompt.prompt();
+            const result = await deferredPrompt.userChoice;
+            if (result.outcome === 'accepted') {
+                installBtn.style.display = 'none';
+            }
+            deferredPrompt = null;
+        });
+
+        // Hide the install button if already installed
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            installBtn.style.display = 'none';
+        }
+    </script>
+</body>
+</html>
