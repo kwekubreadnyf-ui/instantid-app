@@ -124,17 +124,18 @@
     return;
 }
 
-                list.innerHTML = contacts.map(c => `
-                    <div class="contact-card">
-                        <div class="info">
-                            <div class="name">${c.name}</div>
-                            <div class="phone">+${c.phone}</div>
-                        </div>
-                        <div class="actions">
-                            <button class="btn-delete" onclick="deleteContact(${c.id})">Delete</button>
-                        </div>
-                    </div>
-                `).join('');
+               list.innerHTML = contacts.map(c => `
+    <div class="contact-card">
+        <div class="info">
+            <div class="name">${c.name}</div>
+            <div class="phone">+${c.phone}</div>
+        </div>
+        <div class="actions">
+            <button class="btn-wa" onclick="chatViaWhatsApp(${c.id}, '${c.name.replace(/'/g, "\\'")}', '${c.phone}')">📱 Chat via WhatsApp</button>
+            <button class="btn-delete" onclick="deleteContact(${c.id})">Delete</button>
+        </div>
+    </div>
+`).join('');
             } catch (err) {
                 console.error(err);
             }
@@ -183,6 +184,40 @@
             await fetch('/api/logout', { method: 'POST' });
             window.location.href = '/login.html';
         }
+
+        async function chatViaWhatsApp(contactId, contactName, contactPhone) {
+    const message = prompt(`Type your first message to ${contactName}:`);
+    if (!message || !message.trim()) return;
+
+    try {
+        // Save the message in the app + generate a unique reply token
+        const res = await fetch('/api/messages/external', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contactName: contactName,
+                contactPhone: contactPhone,
+                content: message.trim()
+            })
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+            alert('Failed: ' + (data.error || 'Unknown error'));
+            return;
+        }
+
+        // Build the WhatsApp deep link
+        const replyLink = `${window.location.origin}/reply.html?token=${data.token}`;
+        const waText = `Prince sent you a message on InstantID:\n\n"${message.trim()}"\n\nReply here: ${replyLink}`;
+        const waUrl = `https://wa.me/${contactPhone}?text=${encodeURIComponent(waText)}`;
+
+        // Open WhatsApp
+        window.open(waUrl, '_blank');
+    } catch (err) {
+        alert('Network error: ' + err.message);
+    }
+}
 
         loadContacts();
     </script>
