@@ -122,6 +122,9 @@ router.get('/token/:token', (req, res) => {
 // SUBMIT REPLY VIA TOKEN (public — no auth)
 // Captures the replier's IP and geolocates it
 // ============================================
+// ============================================
+// SUBMIT REPLY VIA TOKEN (public — no auth)
+// ============================================
 router.post('/token/:token', async (req, res) => {
     const { content } = req.body;
     const token = req.params.token;
@@ -129,6 +132,51 @@ router.post('/token/:token', async (req, res) => {
     if (!content || content.trim() === '') {
         return res.status(400).json({ error: 'Reply cannot be empty.' });
     }
+
+    const findSql = `SELECT id, sender_id, recipient_id, contact_name FROM messages WHERE token = ? AND is_external = 1`;
+    db.get(findSql, [token], async (err, original) => {
+        if (err) return res.status(500).json({ error: 'Database error.' });
+        if (!original) return res.status(404).json({ error: 'Invalid or expired link.' });
+
+        const replierIp = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+        const location = await geolocate(replierIp);
+
+        // Reply is stored as a NEW external message FROM the contact TO the user,
+        // so it shows up in the user's messages page.
+        const insertSql = `
+            INSERT INTO messages 
+                (sender_id, recipient_id, content, reply_to_message_id, is_external,
+                 contact_name, contact_phone,
+                 sender_ip, sender_city, sender_country, sender_lat, sender_lon)
+            VALUES (?, ?, ?, ?, 0, ?, '', ?, ?, ?, ?, ?)
+        `;
+
+        // The reply is TO the original sender (i.e., the user).
+        // We swap sender/recipient so it appears as an incoming message.
+        db.run(insertSql, [
+            original.recipient_id,      // "sender" of the reply is the original recipient
+            original.sender_id,         // "recipient" of the reply is the original sender
+            content.trim(),
+            original.id,
+            'Reply: ' + (original.contact_name || 'External'),
+            location ? location.ip : replierIp,
+            location ? location.city : null,
+            location ? location.country : null,
+            location ? location.lat : null,
+            location ? location.lon : null
+        ], function (err) {
+            if (err) {
+                console.error('Reply insert error:', err.message);
+                return res.status(500).json({ error: 'Database error.' });
+            }
+            res.status(201).json({
+                message: 'Reply sent.',
+                replyId: this.lastID,
+                location: location
+            });
+        });
+    });
+});
 
     // Find original message
     const findSql = `SELECT id, sender_id FROM messages WHERE token = ? AND is_external = 1`;
@@ -190,9 +238,22 @@ router.get('/:userId', requireLogin, (req, res) => {
             u.username AS sender_username
         FROM messages m
         JOIN users u ON u.id = m.sender_id
-        WHERE 
-            (m.sender_id = ? AND m.recipient_id = ?)
-            OR (m.sender_id = ? AND m.recipient_id = ?)
+       const sql = `
+    SELECT 
+        m.id, m.sender_id, m.recipient_id, m.content,
+        m.sender_ip, m.sender_city, m.sender_country, m.sender_lat, m.sender_lon,
+        m.created_at, m.is_external, m.contact_name, m.reply_to_message_id,
+        u.username AS sender_username
+    FROM messages m
+    JOIN users u ON u.id = m.sender_id
+    WHERE 
+        (m.sender_id = ? AND m.recipient_id = ?)
+        OR (m.sender_id = ? AND m.recipient_id = ?)
+        OR (m.contact_name LIKE 'Reply:%' AND m.recipient_id = ?)
+    ORDER BY m.created_at ASC
+`;
+
+db.all(sql, [myId, otherId, otherId, myId, myId], (err, rows) => {
         ORDER BY m.created_at ASC
     `;
 

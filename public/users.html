@@ -56,9 +56,20 @@
 </div>
 
     <div class="container">
-        <h1 class="page-title">Select a Contact</h1>
-        <div id="usersList">Loading...</div>
+    <h1 class="page-title">Messages</h1>
+    
+    <div style="background:white; padding:20px; border-radius:10px; box-shadow:0 4px 15px rgba(0,0,0,0.08); margin-bottom:20px;">
+        <h3 style="color:#2c3e50; font-size:16px; margin-bottom:12px;">✍️ Start a New Conversation</h3>
+        <textarea id="quickMessage" placeholder="Type your message..." style="width:100%; padding:12px; border:1px solid #bdc3c7; border-radius:6px; font-size:14px; resize:vertical; min-height:70px; box-sizing:border-box; font-family:Arial;"></textarea>
+        <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+            <button onclick="sendToRegistered()" style="flex:1; padding:12px; background:#2980b9; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer; min-width:150px;">💬 Send to Registered User</button>
+            <button onclick="sendViaWhatsApp()" style="flex:1; padding:12px; background:#25D366; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer; min-width:150px;">📱 Send via WhatsApp</button>
+        </div>
     </div>
+    
+    <h3 style="color:#2c3e50; font-size:16px; margin-bottom:12px;">Registered Users</h3>
+    <div id="usersList">Loading...</div>
+</div>
 
     <script>
         async function loadUsers() {
@@ -107,7 +118,93 @@
             await fetch('/api/logout', { method: 'POST' });
             window.location.href = '/login.html';
         }
+async function sendViaWhatsApp() {
+    const content = document.getElementById('quickMessage').value.trim();
+    if (!content) { alert('Type a message first.'); return; }
 
+    let contacts = [];
+    try {
+        const res = await fetch('/api/contacts');
+        if (res.ok) contacts = await res.json();
+    } catch (err) {}
+
+    if (contacts.length === 0) {
+        if (confirm('No contacts saved yet. Go to Contacts to add one?')) {
+            window.location.href = '/contacts.html';
+        }
+        return;
+    }
+
+    const options = contacts.map((c, i) => `${i + 1}. ${c.name} (+${c.phone})`).join('\n');
+    const choice = prompt(`Send WhatsApp message to:\n\n${options}\n\nEnter number (1-${contacts.length}):`);
+
+    if (!choice) return;
+    const idx = parseInt(choice) - 1;
+    if (isNaN(idx) || idx < 0 || idx >= contacts.length) { alert('Invalid choice.'); return; }
+
+    const contact = contacts[idx];
+
+    try {
+        const res = await fetch('/api/messages/external', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contactName: contact.name,
+                contactPhone: contact.phone,
+                content: content
+            })
+        });
+        const data = await res.json();
+        if (!res.ok) { alert('Failed: ' + (data.error || 'Unknown error')); return; }
+
+        const replyLink = `${window.location.origin}/reply.html?token=${data.token}`;
+        const waText = `Prince sent you a message on InstantID:\n\n"${content}"\n\nReply here: ${replyLink}`;
+        window.open(`https://wa.me/${contact.phone}?text=${encodeURIComponent(waText)}`, '_blank');
+
+        document.getElementById('quickMessage').value = '';
+    } catch (err) {
+        alert('Network error: ' + err.message);
+    }
+}
+
+async function sendToRegistered() {
+    const content = document.getElementById('quickMessage').value.trim();
+    if (!content) { alert('Type a message first.'); return; }
+
+    // Load users
+    const res = await fetch('/api/users');
+    if (!res.ok) { alert('Error loading users.'); return; }
+    const users = await res.json();
+
+    if (users.length === 0) { alert('No registered users yet.'); return; }
+
+    const options = users.map((u, i) => `${i + 1}. ${u.username}`).join('\n');
+    const choice = prompt(`Send to:\n\n${options}\n\nEnter number:`);
+
+    if (!choice) return;
+    const idx = parseInt(choice) - 1;
+    if (isNaN(idx) || idx < 0 || idx >= users.length) { alert('Invalid choice.'); return; }
+
+    const user = users[idx];
+
+    try {
+        const res = await fetch('/api/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ recipientId: user.id, content: content })
+        });
+        if (res.ok) {
+            alert('Message sent!');
+            document.getElementById('quickMessage').value = '';
+            window.location.href = `/conversation.html?with=${user.id}`;
+        } else {
+            const err = await res.json();
+            alert('Failed: ' + (err.error || 'Unknown error'));
+        }
+    } catch (err) {
+        alert('Network error: ' + err.message);
+    }
+}
         loadUsers();
     </script>
 </body>
