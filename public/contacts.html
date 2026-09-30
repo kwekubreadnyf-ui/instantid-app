@@ -124,15 +124,15 @@
     return;
 }
 
-               list.innerHTML = contacts.map(c => `
-    <div class="contact-card">
+              list.innerHTML = contacts.map(c => `
+    <div class="contact-card" style="cursor:pointer;" onclick="openChat('${c.name.replace(/'/g, "\\'")}', '${c.phone}')">
         <div class="info">
             <div class="name">${c.name}</div>
             <div class="phone">+${c.phone}</div>
         </div>
-        <div class="actions">
-            <button class="btn-wa" onclick="chatViaWhatsApp(${c.id}, '${c.name.replace(/'/g, "\\'")}', '${c.phone}')">📱 Chat via WhatsApp</button>
-            <button class="btn-delete" onclick="deleteContact(${c.id})">Delete</button>
+        <div class="actions" onclick="event.stopPropagation();">
+            <button class="btn-wa" onclick="event.stopPropagation(); openChat('${c.name.replace(/'/g, "\\'")}', '${c.phone}')">💬 Open Chat</button>
+            <button class="btn-delete" onclick="event.stopPropagation(); deleteContact(${c.id})">Delete</button>
         </div>
     </div>
 `).join('');
@@ -218,7 +218,9 @@
         alert('Network error: ' + err.message);
     }
 }
-
+function openChat(name, phone) {
+    window.location.href = `/whatsapp-chat.html?name=${encodeURIComponent(name)}&phone=${phone}`;
+}
         loadContacts();
     </script>
 </body>
